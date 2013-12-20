@@ -1,51 +1,61 @@
-﻿using System.Windows.Forms;
-using ApprovalTests.Events;
-using ApprovalTests;
-using System.Text;
-using ApprovalUtilities.Reflection;
-using System.Reflection;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Windows.Forms;
+using ApprovalTests.Events;
+using ApprovalTests.Namers;
+using ApprovalUtilities.Reflection;
 using ApprovalUtilities.Utilities;
 
 namespace ApprovalTests.WinForms
 {
-    public class WinFormsApprovals
-    {
-        private static string GetLabelForChild(object parent, object child)
-        {
-            FieldInfo field = ReflectionUtilities.GetFieldForChild(parent, child);
-            return "({0}.{1})".FormatWith(parent.GetType().Name, field.Name);
-        }
+	public class WinFormsApprovals
+	{
+		private static Action addAdditionalInfo = ApprovalResults.UniqueForOs;
 
-        public static void VerifyEventsFor(Form form)
-        {
-            var sb = new StringBuilder();
-            sb.Append(EventApprovals.WriteEventsToString(form, ""));
+		public static void RegisterDefaultAddtionalInfo(Action a)
+		{
+			addAdditionalInfo = a;
+		}
 
-            foreach (var o in GetSubEvents(form))
-            {
-                sb.Append(EventApprovals.WriteEventsToString(o, GetLabelForChild(form, o)));
-            }
+		public static void VerifyEventsFor(Form form)
+		{
+			var sb = new StringBuilder();
+			sb.Append(EventApprovals.WriteEventsToString(form, ""));
 
-            ApprovalTests.Approvals.Verify(sb.ToString());
-        }
+			foreach (var o in GetSubEvents(form))
+			{
+				sb.Append(EventApprovals.WriteEventsToString(o, GetLabelForChild(form, o)));
+			}
 
-        private static IEnumerable<object> GetSubEvents(Form form)
-        {
-            return form.GetInstanceFields()
-                .Select(fi => fi.GetValue(form))
-                .Where(o => EventApprovals.GetEventsInformationFor(o).Count() > 0);
-        }
+			Approvals.Verify(sb.ToString());
+		}
 
-        public static void Verify(Form form)
-        {
-            ApprovalTests.Approvals.Verify(new ApprovalFormWriter(form));
-        }
+		public static void Verify(Form form)
+		{
+			addAdditionalInfo();
+			Approvals.Verify(new ApprovalFormWriter(form));
+		}
 
-        public static void Verify(Control control)
-        {
-            ApprovalTests.Approvals.Verify(new ApprovalControlWriter(control));
-        }
-    }
+		public static void Verify(Control control)
+		{
+			addAdditionalInfo();
+			Approvals.Verify(new ApprovalControlWriter(control));
+		}
+
+		private static string GetLabelForChild(object parent, object child)
+		{
+			FieldInfo field = ReflectionUtilities.GetFieldForChild(parent, child);
+			return "({0}.{1})".FormatWith(parent.GetType().Name, field.Name);
+		}
+
+		private static IEnumerable<object> GetSubEvents(Form form)
+		{
+			return form.GetInstanceFields()
+			           .Select(fi => fi.GetValue(form))
+			           .Where(o => EventApprovals.GetEventsInformationFor(o).Count() > 0);
+		}
+	}
 }

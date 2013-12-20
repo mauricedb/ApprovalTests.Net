@@ -3,7 +3,6 @@ using System.IO;
 using ApprovalTests.Reporters;
 using ApprovalUtilities.Utilities;
 using NUnit.Framework;
-using System.Linq;
 
 namespace ApprovalTests.Tests
 {
@@ -97,5 +96,7 @@ namespace ApprovalTests.Tests
 		{
 			Approvals.VerifyAll(text, (t) => "" + t.Length);
 		}
+
+		
 	}
 }

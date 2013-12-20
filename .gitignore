@@ -1,3 +1,5 @@
+*.received.*
+
 #################
 ## Eclipse
 #################
@@ -15,8 +17,7 @@ local.properties
 .classpath
 .settings/
 .loadpath
-ApprovalsKeyPair.snk
-ApprovalsKeyPair_real.snk
+
 build/Output
 # External tool builders
 .externalToolBuilders/
@@ -64,6 +65,7 @@ build/Output
 *.vspscc
 .builds
 *.dotCover
+*.nupkg
 
 ## TODO: If you have NuGet Package Restore enabled, uncomment this
 packages/
@@ -163,3 +165,5 @@ pip-log.txt
 
 # Mac crap
 .DS_Store
+*.ForMachine.KARA.approved.*
+RealTests.playlist

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using ApprovalTests.Approvers;
 using ApprovalTests.Core;
@@ -25,7 +24,14 @@ namespace ApprovalTests
 
 		public static Caller CurrentCaller
 		{
-			get { return currentCaller.Value; }
+			get
+			{
+				if (currentCaller == null)
+				{
+					SetCaller();
+				}
+				return currentCaller.Value;
+			}
 		}
 
 		public static void SetCaller()
@@ -51,7 +57,7 @@ namespace ApprovalTests
 
 		private static IEnvironmentAwareReporter GetFrontLoadedReporterFromAttribute()
 		{
-			var frontLoaded = GetFirstFrameForAttribute<FrontLoadedReporterAttribute>(CurrentCaller);
+			var frontLoaded = CurrentCaller.GetFirstFrameForAttribute<FrontLoadedReporterAttribute>();
 			return frontLoaded != null ? frontLoaded.Reporter : (IEnvironmentAwareReporter) DefaultFrontLoaderReporter.INSTANCE;
 		}
 
@@ -59,8 +65,8 @@ namespace ApprovalTests
 		                                                               IEnvironmentAwareReporter frontLoad)
 		{
 			return frontLoad.IsWorkingInThisEnvironment("default.txt")
-			       	? frontLoad
-			       	: (GetReporterFromAttribute() ?? defaultIfNotFound);
+				       ? frontLoad
+				       : (GetReporterFromAttribute() ?? defaultIfNotFound);
 		}
 
 
@@ -75,39 +81,8 @@ namespace ApprovalTests
 
 		private static IApprovalFailureReporter GetReporterFromAttribute()
 		{
-			var useReporter = GetFirstFrameForAttribute<UseReporterAttribute>(CurrentCaller);
+			var useReporter = CurrentCaller.GetFirstFrameForAttribute<UseReporterAttribute>();
 			return useReporter != null ? useReporter.Reporter : null;
-		}
-
-		private static A GetFirstFrameForAttribute<A>(Caller caller) where A : Attribute
-		{
-			var attribute = typeof (A);
-			var attributeExtractors = new Func<MethodBase, Object[]>[]
-			                          	{
-			                          		m => m.GetCustomAttributes(attribute, true),
-			                          		m => m.DeclaringType.GetCustomAttributes(attribute, true),
-			                          		m => m.DeclaringType.Assembly.GetCustomAttributes(attribute, true)
-			                          	};
-			foreach (var attributeExtractor in attributeExtractors)
-			{
-				foreach (MethodBase method in caller.NonLambdaCallers.Select(c => c.Method))
-				{
-					try
-					{
-						object[] useReporters = attributeExtractor(method);
-					if (useReporters.Length != 0)
-					{
-						return useReporters.First() as A;
-					}
-					}
-					catch (FileNotFoundException)
-					{ 
-						// ignore exceptions
-					}
-					
-				}
-			}
-			return null;
 		}
 
 		public static void Verify(IExecutableQuery query)
@@ -141,8 +116,6 @@ namespace ApprovalTests
 			Verify(new ExecutableLambda("" + text, callBackOnFailure));
 		}
 
-		
-
 		#region Text
 
 		public static void Verify(string text)
@@ -154,6 +127,7 @@ namespace ApprovalTests
 		{
 			defaultNamerCreator = creator;
 		}
+
 		public static IApprovalNamer GetDefaultNamer()
 		{
 			return defaultNamerCreator.Invoke();
@@ -162,6 +136,17 @@ namespace ApprovalTests
 		public static void Verify(object text)
 		{
 			Verify(new ApprovalTextWriter("" + text));
+		}
+		public static void Verify(string text,  Func<string, string> scrubber)
+		{
+			Verify(new ApprovalTextWriter(scrubber(text)));
+		}
+
+		public static void Verify(Exception e)
+		{
+			string stackTrace = "" + e;
+
+			Verify(stackTrace, StackTraceScrubber.Scrub);
 		}
 
 		#endregion
@@ -231,7 +216,14 @@ namespace ApprovalTests
 		}
 
 		#endregion
+
+		public static void VerifyPdfFile(string pdfFilePath)
+		{
+			PdfScrubber.ScrubPdf(pdfFilePath);
+			Verify(new ExistingFileWriter(pdfFilePath));
+		}
 	}
+
 
 	internal class AlwaysWorksReporter : IEnvironmentAwareReporter
 	{

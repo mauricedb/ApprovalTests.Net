@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Data;
 using System.Reflection;
 using ApprovalTests.Namers;
@@ -13,68 +11,72 @@ using ReportingDemo;
 
 namespace ApprovalTests.Tests.Persistence.Datasets
 {
-	[UseReporter(typeof(AllFailingTestsClipboardReporter))]
-	[TestFixture]
-	public class DatasetTest
-	{
-		private const string ReportName = "ReportingDemo.InsultsReport.rdlc";
+    [TestFixture]
+    public class DatasetTest
+    {
+        private const string ReportName = "ReportingDemo.InsultsReport.rdlc";
 
-		private static DataTable GetDefaultData()
-		{
-			return new InsultsDataSet.InsultsDataTable().AddTestDataRows(1);
-		}
+        [Test]
+        [UseReporter(typeof(ClipboardReporter))]
+        public void TestExtrenalImage()
+        {
+            RdlcApprovals.VerifyReport("ReportingDemo.ExternalImage.rdlc", GetDefaultData());
+        }
 
-		private static Assembly GetAssembly()
-		{
-			return typeof (InsultsDataSet).Assembly;
-		}
+        [Test]
+        public void TestSimpleReportWith1Dataset()
+        {
+            RdlcApprovals.VerifyReport(ReportName, GetDefaultData());
+        }
 
-		[Test]
-		public void TestSimpleReportWith1Dataset()
-		{
-			RdlcApprovals.VerifyReport(ReportName, GetDefaultData());
-		}
+        [Test]
+        public void TestSimpleReportWithDatasetInAssembly()
+        {
+            RdlcApprovals.VerifyReport(ReportName, "Model", GetDefaultData());
+        }
 
-		[Test]
-		public void TestSimpleReportWithDatasetInAssembly()
-		{
-			RdlcApprovals.VerifyReport(ReportName, "Model", GetDefaultData());
-		}
+        [Test]
+        public void TestReport()
+        {
+            RdlcApprovals.VerifyReport(ReportName, GetAssembly(), Tuple.Create("Model", GetDefaultData()));
+        }
 
-		[Test]
-		public void TestReport()
-		{
-			RdlcApprovals.VerifyReport(ReportName, GetAssembly(), Tuple.Create("Model", GetDefaultData()));
-		}
+        [Test]
+        public void TestReportWithDataPair()
+        {
+            RdlcApprovals.VerifyReport(ReportName, GetAssembly(), new DataPairs { { "Model", GetDefaultData() } });
+        }
 
-		[Test]
-		public void TestReportWithDataPair()
-		{
-			RdlcApprovals.VerifyReport(ReportName, GetAssembly(), new DataPairs {{"Model", GetDefaultData()}});
-		}
+        [Test]
+        public void TestSimpleReportExplict()
+        {
+            RdlcApprovals.VerifyReport(ReportName, GetAssembly(), "Model", GetDefaultData());
+        }
 
+        [Test]
+        public void TestDataSourceNames()
+        {
+            NamerFactory.Clear();
+            var exception =
+                ExceptionUtilities.GetException(
+                    () => RdlcApprovals.VerifyReport(ReportName, GetAssembly(), "purposelyMisspelt", GetDefaultData()));
+            Approvals.Verify(exception.Message);
+        }
 
-		[Test]
-		public void TestSimpleReportExplict()
-		{
-			RdlcApprovals.VerifyReport(ReportName, GetAssembly(), "Model", GetDefaultData());
-		}
+        [SetUp]
+        public void NamerSetUp()
+        {
+            ApprovalResults.UniqueForMachineName();
+        }
 
-		[Test]
-		public void TestDataSourceNames()
-		{
-			NamerFactory.Clear();
-			var exception =
-				ExceptionUtilities.GetException(
-					() => RdlcApprovals.VerifyReport(ReportName, GetAssembly(), "purposelyMisspelt", GetDefaultData()));
-			Approvals.Verify(exception.Message);
-		}
+        private static DataTable GetDefaultData()
+        {
+            return new InsultsDataSet.InsultsDataTable().AddTestDataRows(1);
+        }
 
-		[SetUp]
-		public void NamerSetUp()
-		{
-			NamerFactory.AsMachineSpecificTest();
-		}
-	}
-
+        private static Assembly GetAssembly()
+        {
+            return typeof(InsultsDataSet).Assembly;
+        }
+    }
 }

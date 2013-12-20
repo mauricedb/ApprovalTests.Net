@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Specialized;
 using System.Net;
 using System.Text;
 using System.Web;
@@ -12,18 +11,28 @@ namespace ApprovalTests.Asp
 	public static class AspApprovals
 	{
 		/// <summary>
-		/// 	Uses PortFactory.AspPort
+		///   Uses PortFactory.AspPort
 		/// </summary>
 		public static void VerifyAspPage(Action testMethod)
 		{
+			VerifyAspPage(testMethod, ScrubberUtils.NO_SCRUBBER);
+		}
+
+		public static void VerifyAspPage(Action testMethod, Func<string, string> htmlScrubber)
+		{
 			var port = PortFactory.AspPort;
-			VerifyAspPage(testMethod, port);
+			VerifyAspPage(testMethod, port, htmlScrubber);
 		}
 
 		public static void VerifyAspPage(Action testMethod, int port)
 		{
+			VerifyAspPage(testMethod, port, ScrubberUtils.NO_SCRUBBER);
+		}
+
+		private static void VerifyAspPage(Action testMethod, int port, Func<string, string> htmlScrubber)
+		{
 			var url = GetUrl(testMethod, "http://localhost:{0}".FormatWith(port));
-			VerifyUrl(url);
+			VerifyUrl(url, htmlScrubber);
 		}
 
 		private static string GetUrl(Action testMethod, string host)
@@ -38,13 +47,21 @@ namespace ApprovalTests.Asp
 
 		public static void VerifyUrl(string url)
 		{
-			HtmlApprovals.VerifyHtml(GetUrlContents(url));
+			VerifyUrl(url, ScrubberUtils.NO_SCRUBBER);
+		}
+
+		public static void VerifyUrl(string url, Func<string, string> htmlScrubber)
+		{
+			string html = GetUrlContents(url);
+			var scrubbedHtml = htmlScrubber(html);
+			HtmlApprovals.VerifyHtml(scrubbedHtml);
 		}
 
 		public static string GetUrlContents(string url)
 		{
 			try
 			{
+				url = ResolveUrl(url);
 				using (var client = new WebClient())
 				{
 					var baseUrl = url.Substring(0, url.LastIndexOf("/"));
@@ -64,6 +81,13 @@ namespace ApprovalTests.Asp
 			}
 		}
 
+		public static string ResolveUrl(string rawUrl)
+		{
+			rawUrl = string.IsNullOrWhiteSpace(rawUrl) ? "/" : rawUrl.TrimStart('~');
+			return rawUrl.StartsWith("/") ? "http://localhost:{0}{1}".FormatWith(PortFactory.AspPort, rawUrl) : rawUrl;
+		}
+
+
 		public static void VerifyRouting(Action<RouteCollection> registerRoutesMethod, params string[] urls)
 		{
 			var routes = new RouteCollection();
@@ -76,9 +100,7 @@ namespace ApprovalTests.Asp
 				var route = routes.GetRouteData(httpContext);
 				sb.AppendFormat("{0} => {1} \r\n", url, route.Values.ToReadableString());
 			}
-			ApprovalTests.Approvals.Verify(sb.ToString());
+			Approvals.Verify(sb.ToString());
 		}
 	}
-
-	
 }
